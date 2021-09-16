@@ -14,21 +14,39 @@ def getExperimentsInSet(experiment_set):
 
 def readAggregateDevices(experiment_set, experiment_name):
     experiments = os.listdir(experiment_set)
-    devices = pd.DataFrame(columns=[0,1,2])
+    devices = pd.DataFrame(
+        columns=["deviceID", "status", "datetime"]
+        #dtype={'DeviceID'->'String', 'Status'->'Bool', 'Timestamp'->'Int64'}
+    )
     for device_file in os.listdir(experiment_set+"/"+experiment_name+"/devices"):
         if(device_file.endswith(".csv")):
-            device = pd.read_csv(experiment_set+"/"+experiment_name+"/devices/"+device_file, header=None)
+            device = pd.read_csv(
+                experiment_set+"/"+experiment_name+"/devices/"+device_file, 
+                header=None,
+                names=["deviceID", "status", "datetime"],
+                dtype={'deviceID':'str', 'status':'str', 'datetime':'Int64'}
+            )
             devices = pd.concat([devices, device])
-    devices.columns=["Device ID", "Device Status", "Device Timestamp"]
-    devices["datetime"] = pd.to_datetime(devices["Device Timestamp"], unit="ms")
+    devices["datetime"] = pd.to_datetime(devices["datetime"], unit="ms")
 
     return devices
 
 def readConsumer(experiment_set, experiment_name):
-    result = pd.read_csv(experiment_set+"/"+experiment_name+"/consumer/"+experiment_name+".csv", header=None, sep=",") \
-        .replace("None", np.nan) \
-        .dropna()
-    result.columns=["Device ID", "Device Status", "Kafka Timestamp", "Draco Timestamp", "Device Timestamp", "Consumer Timestamp"]
+    result = pd.read_csv(
+        experiment_set+"/"+experiment_name+"/consumer/"+experiment_name+".csv",
+        header=None,
+        names=["Device ID", "Device Status", "Kafka Timestamp", "Draco Timestamp", "Device Timestamp", "Consumer Timestamp"],
+        dtype={
+            "Device ID":'str',
+            "Device Status":'str',
+            "Kafka Timestamp": 'str',
+            "Draco Timestamp": 'str',
+            "Device Timestamp": 'str',
+            "Consumer Timestamp": 'str'
+        }
+    )
+    result = result.replace("None", np.nan).dropna()
+    
     
     result["datetime"] = pd.to_datetime(result["Device Timestamp"], unit="ms")
     result["Kafka Timestamp"] = result["Kafka Timestamp"].astype("int64", copy=False)
