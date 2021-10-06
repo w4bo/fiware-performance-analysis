@@ -1,0 +1,11 @@
+version: "3.5"
+
+services:
+  pykafkaconsumer:
+    hostname: pykafkavonsumer
+    build: ./pykafkaConsumer
+    container_name: pykafkaconsumer
+    volumes:
+      - ./pykafkaConsumer/mylogs:/mylogs
+    networks:
+      - default

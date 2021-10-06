@@ -1,0 +1,148 @@
+version: "3.5"
+
+services:
+  # Orion is the context broker
+  orion:
+    image: fiware/orion:${ORION_VERSION}
+    hostname: orion
+    container_name: fiware-orion
+    depends_on:
+      - mongo-db-orion
+    networks:
+      - default
+    expose:
+      - "${ORION_PORT}"
+    ports:
+      - "${ORION_PORT_EXT}:${ORION_PORT}" # localhost:1026
+    ulimits:
+      nofile:
+        soft: 65535
+        hard: 65535
+      core:
+        soft: 60000000
+        hard: 60000000
+      memlock:
+        soft: 60000000
+        hard: 60000000
+    command: -corsOrigin __ALL -dbhost mongo-db-orion -logLevel ERROR
+    environment:
+      - NODE_OPTIONS=--max_old_space_size=60000
+    healthcheck:
+      test: curl --fail -s http://orion:${ORION_PORT}/version || exit 1
+      interval: 5s
+
+  #iot agent
+  iot-agent:
+    image: fiware/iotagent-json:${JSON_VERSION}
+    hostname: iot-agent
+    container_name: fiware-iot-agent
+    depends_on:
+      mongo-db-orion:
+        condition: service_healthy
+    networks:
+      - default
+    expose:
+      - "${IOTA_NORTH_PORT}"
+    ports:
+      - "${IOTA_NORTH_PORT}:${IOTA_NORTH_PORT}" # localhost:4041
+      - "${IOTA_SOUTH_PORT}:${IOTA_SOUTH_PORT}"
+    ulimits:
+      nofile:
+        soft: 65535
+        hard: 65535
+      core:
+        soft: 60000000
+        hard: 60000000
+      memlock:
+        soft: 60000000
+        hard: 60000000
+    environment:
+      - IOTA_CB_HOST=orion # name of the context broker to update context
+      - IOTA_CB_PORT=${ORION_PORT} # port the context broker listens on to update context
+      - IOTA_NORTH_PORT=${IOTA_NORTH_PORT}
+      - IOTA_REGISTRY_TYPE=mongo-db-orion #Whether to hold IoT device info in memory or in a database
+      - IOTA_LOG_LEVEL=DEBUG # The log level of the IoT Agent
+      - IOTA_TIMESTAMP=true # Supply timestamp information with each measurement
+      - IOTA_CB_NGSI_VERSION=v2 # use NGSIv2 when sending updates for active attributes
+      - IOTA_AUTOCAST=true # Ensure Ultralight number values are read as numbers not strings
+        ##Modificato hostnmae di mongodb
+      - IOTA_MONGO_HOST=mongo-db-orion # The host name of MongoDB
+      - IOTA_MONGO_PORT=${MONGO_DB_PORT} # The port mongoDB is listening on
+      - IOTA_MONGO_DB=iotagentjs # The name of the database used in mongoDB
+      - IOTA_MQTT_HOST=mosquitto # The host name of the MQTT Broker
+      - IOTA_MQTT_PORT=${MOSQUITTO_PORT_INT} # The port the MQTT Broker is listening on to receive topics
+      - IOTA_HTTP_PORT=${IOTA_SOUTH_PORT} # The port used for device traffic over HTTP
+      - IOTA_PROVIDER_URL=http://iot-agent:${IOTA_NORTH_PORT}
+      - IOTA_DEFAULT_RESOURCE=
+      - NODE_OPTIONS=--max_old_space_size=60000
+      - ORION_IN_REQ_PAYLOAD_MAX_SIZE=400000450
+      - IOTA_MULTI_CORE=True
+      - IOTA_LOG_LEVEL=ERROR
+    healthcheck:
+      interval: 5s
+
+
+  # Database (ORION)
+  mongo-db-orion:
+    image: mongo:${MONGO_DB_VERSION}
+    hostname: mongo-db-orion
+    container_name: mongo-db-orion
+    expose:
+      - "${MONGO_DB_FIWARE_PORT_INT}"
+    ports:
+      - "${MONGO_DB_FIWARE_PORT_EXT}:${MONGO_DB_FIWARE_PORT_INT}" # localhost:27017
+    networks:
+      - default
+    volumes:
+      - mongo-db-orion:/data
+    healthcheck:
+      test: |
+        host=`hostname --ip-address || echo '127.0.0.1'`;
+        mongo --quiet $host/test --eval 'quit(db.runCommand({ ping: 1 }).ok ? 0 : 2)' && echo 0 || echo 1
+      interval: 5s
+      
+  # MQTT Broker
+  mosquitto:
+    image: eclipse-mosquitto:1.6.14
+    hostname: mosquitto
+    container_name: mosquitto
+    expose:
+      - "${MOSQUITTO_PORT_EXT}"
+      - "9001"
+    ports:
+      - "${MOSQUITTO_PORT_EXT}:${MOSQUITTO_PORT_INT}"
+      - "9001:9001"
+    volumes:
+      - ./fiware/mosquitto/mosquitto.conf:/mosquitto/config/mosquitto.conf
+    networks:
+      - default
+    environment:
+      - "PUID=${MOSQUITTO_PORT_EXT}"
+      - "PGID=${MOSQUITTO_PORT_EXT}"
+
+  zookeeper:
+    image: wurstmeister/zookeeper
+    ports:
+      - "${ZOOKEEPER_EXT_PORT}:2181"
+
+  kafka:
+    build: ./kafka-docker
+    ports:
+      - "${KAFKA_EXT_PORT}:9092"
+    environment:
+      DOCKER_API_VERSION: 1.22
+      KAFKA_ADVERTISED_HOST_NAME: ${FIWARE_IP}
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+      KAFKA_CREATE_TOPICS: ${KAFKA_TOPIC}
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+
+volumes:
+  mongo-db-orion: ~
+  mongo-db-web:
+
+networks:
+  default_net:
+    ipam:
+      config:
+        - subnet: 172.18.1.0/24

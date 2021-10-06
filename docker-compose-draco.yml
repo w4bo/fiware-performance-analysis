@@ -1,0 +1,39 @@
+version: "3.5"
+
+services:
+  draco:
+    #image: ging/fiware-draco:${DRACO_VERSION}
+    hostname: draco
+    build: ./draco
+    container_name: fiware-draco
+    networks:
+      - default
+    environment:
+      - NIFI_WEB_HTTP_PORT=${DRACO_API_PORT}
+    expose:
+      - "5050"
+      - "${DRACO_API_PORT}"
+    ports:
+      - "${DRACO_API_PORT}:${DRACO_API_PORT}" # localhost:9090
+      - "${DRACO_WS_PORT}:5050"
+    volumes:
+      - ./draco/config:/config
+    healthcheck:
+      test: curl --fail -s http://draco:${DRACO_API_PORT}/nifi-api/system-diagnostics || exit 1
+      start_period: 1m
+
+networks:
+  default_net:
+    ipam:
+      config:
+        - subnet: 172.18.1.0/24
+
+volumes:
+  mongo-db-orion: ~
+  mongo-db-web:
+
+networks:
+  default_net:
+    ipam:
+      config:
+        - subnet: 172.18.1.0/24

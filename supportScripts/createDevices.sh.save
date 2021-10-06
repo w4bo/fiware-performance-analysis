@@ -1,0 +1,27 @@
+#!/bin/bash
+FROM=$1
+NUM=$2
+TIME=$3
+SUB_NUM=$4
+HOW_MANY=$5
+HOW_OFTEN=$6
+STEP=$7
+PAYLOAD_KB=$8
+EXP_NAME=$9
+
+echo ${EXP_NAME}
+
+#build image
+echo $(pwd)
+#cambiare percorso 
+cd  ~/
+docker build -t monte/device . &>/dev/null
+
+sleep 1m
+
+#start devices
+for ((i=${FROM}; i<${FROM}+${NUM}; i++))
+do
+  echo ${i}
+  ./launcher.sh ${i} off ${TERM_TIME} ${EXP_NAME} ${HOW_MANY} ${HOW_OFTEN} ${STEP} ${PAYLOAD_KB} &
+done
