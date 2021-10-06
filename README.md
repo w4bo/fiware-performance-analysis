@@ -8,6 +8,4 @@ To run the notebooks
     pip install -r requirements.txt
     python -m notebook
  
-Put data in the `data/` folder.
-
-For the `graphMatrixTesting` notebook, put data in `data/X`, where "X" is the experiment version identifier (eg: V1, V2 ecc...)
+Put data in the `data/X` folder, where "X" is the experiment version identifier (eg: V1, V2 ecc...)

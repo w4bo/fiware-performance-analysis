@@ -32,19 +32,24 @@ def readAggregateDevices(experiment_set, experiment_name):
     return devices
 
 def readConsumer(experiment_set, experiment_name):
-    result = pd.read_csv(
-        experiment_set+"/"+experiment_name+"/consumer/"+experiment_name+".csv",
-        header=None,
-        names=["Device ID", "Device Status", "Kafka Timestamp", "Draco Timestamp", "Device Timestamp", "Consumer Timestamp"],
-        dtype={
-            "Device ID":'str',
-            "Device Status":'str',
-            "Kafka Timestamp": 'str',
-            "Draco Timestamp": 'str',
-            "Device Timestamp": 'str',
-            "Consumer Timestamp": 'str'
-        }
-    )
+    try:
+        result = pd.read_csv(
+            experiment_set+"/"+experiment_name+"/consumer/"+experiment_name+".csv",
+            header=None,
+            names=["Device ID", "Device Status", "Kafka Timestamp", "Draco Timestamp", "Device Timestamp", "Consumer Timestamp"],
+            dtype={
+                "Device ID":'str',
+                "Device Status":'str',
+                "Kafka Timestamp": 'str',
+                "Draco Timestamp": 'str',
+                "Device Timestamp": 'str',
+                "Consumer Timestamp": 'str'
+            }
+        )
+    except:
+        result = pd.DataFrame(
+            columns=["Device ID", "Device Status", "Kafka Timestamp", "Draco Timestamp", "Device Timestamp", "Consumer Timestamp"]
+        )
     result = result.replace("None", np.nan).dropna()
     
     
@@ -63,3 +68,6 @@ def readConsumer(experiment_set, experiment_name):
 
 
     return result
+
+def paramsToMessageCount(params):
+    return int(params[0]) * (1000/int(params[1]) * int(params[3]))
